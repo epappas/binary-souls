@@ -23,8 +23,9 @@ serde_yaml = "0.9"
 futures = "0.3.31"
 tokio-retry = "0.3.0"
 tokio-stream = "0.1.17"
-libp2p = { version = "0.54.1", features = [
+libp2p = { version = "^0.54.1", features = [
 	"tokio",
+	"gossipsub",
 	"cbor",
 	"dns",
 	"kad",
@@ -34,6 +35,14 @@ libp2p = { version = "0.54.1", features = [
 	"tcp",
 	"websocket",
 	"yamux",
+	"tls",
+	"autonat",
+	"identify",
+	"mdns",
+	"quic",
+	"ping",
+	"relay",
+	"rendezvous",
 ] }
 
 [dev-dependencies]

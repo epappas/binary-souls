@@ -1,6 +1,7 @@
 use std::{
 	collections::{hash_map, HashMap, HashSet},
 	error::Error,
+	time::Duration,
 };
 
 use futures::{
@@ -9,11 +10,12 @@ use futures::{
 	StreamExt,
 };
 use libp2p::{
-	kad,
+	identify, kad,
 	multiaddr::Protocol,
+	ping, rendezvous,
 	request_response::{self, OutboundRequestId},
 	swarm::{Swarm, SwarmEvent},
-	PeerId,
+	Multiaddr, PeerId,
 };
 
 use crate::network::types::{Behaviour, BehaviourEvent, Command, Event, FileRequest, FileResponse};
@@ -31,6 +33,9 @@ pub(crate) struct EventLoop {
 	pending_start_providing: HashMap<kad::QueryId, oneshot::Sender<()>>,
 	pending_get_providers: HashMap<kad::QueryId, oneshot::Sender<HashSet<PeerId>>>,
 	pending_request_file: HashMap<OutboundRequestId, FileRequestSender>,
+	cookie: Option<rendezvous::Cookie>,
+	namespace: Option<rendezvous::Namespace>,
+	rendezvous_point: Option<PeerId>,
 }
 
 impl EventLoop {
@@ -47,18 +52,28 @@ impl EventLoop {
 			pending_start_providing: Default::default(),
 			pending_get_providers: Default::default(),
 			pending_request_file: Default::default(),
+			cookie: None,
+			namespace: None,
+			rendezvous_point: None,
 		}
 	}
 
 	pub(crate) async fn run(mut self) {
+		let mut discover_tick = tokio::time::interval(Duration::from_secs(30));
+
 		loop {
 			tokio::select! {
 				event = self.swarm.select_next_some() => self.handle_event(event).await,
 				command = self.command_receiver.next() => match command {
 					Some(c) => self.handle_command(c).await,
-					// Command channel closed, thus shutting down the network event loop.
 					None=>  return,
 				},
+				_ = discover_tick.tick(), if self.rendezvous_point.is_some() => self.swarm.behaviour_mut().rendezvous.discover(
+					self.namespace.clone(),
+					self.cookie.clone(),
+					None,
+					self.rendezvous_point.unwrap(),
+					),
 			}
 		}
 	}
@@ -137,9 +152,13 @@ impl EventLoop {
 			)) => {},
 			SwarmEvent::NewListenAddr { address, .. } => {
 				let local_peer_id = *self.swarm.local_peer_id();
+				tracing::info!(
+					"Listening on {}",
+					address.clone().with(Protocol::P2p(local_peer_id))
+				);
 				eprintln!(
 					"Local node is listening on {:?}",
-					address.with(Protocol::P2p(local_peer_id))
+					address.clone().with(Protocol::P2p(local_peer_id))
 				);
 			},
 			SwarmEvent::IncomingConnection { .. } => {},
@@ -149,8 +168,19 @@ impl EventLoop {
 						let _ = sender.send(Ok(()));
 					}
 				}
+				if let Err(error) = self.swarm.behaviour_mut().rendezvous.register(
+					rendezvous::Namespace::from_static("rendezvous"),
+					peer_id,
+					None,
+				) {
+					tracing::error!("Failed to register: {error}");
+					return;
+				}
+				tracing::info!("Connection established with rendezvous point {}", peer_id);
 			},
-			SwarmEvent::ConnectionClosed { .. } => {},
+			SwarmEvent::ConnectionClosed { peer_id, cause: Some(error), .. } => {
+				tracing::trace!("Lost connection with {} : {}", peer_id.to_base58(), error);
+			},
 			SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
 				if let Some(peer_id) = peer_id {
 					if let Some(sender) = self.pending_dial.remove(&peer_id) {
@@ -160,7 +190,67 @@ impl EventLoop {
 			},
 			SwarmEvent::IncomingConnectionError { .. } => {},
 			SwarmEvent::Dialing { peer_id: Some(peer_id), .. } => eprintln!("Dialing {peer_id}"),
-			e => panic!("{e:?}"),
+			SwarmEvent::Behaviour(BehaviourEvent::Identify(identify::Event::Received {
+				info: identify::Info { observed_addr, .. },
+				..
+			})) => {
+				self.swarm.add_external_address(observed_addr.clone());
+
+				tracing::info!("Received identify message from {observed_addr:?}");
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
+				rendezvous::client::Event::Discovered { registrations, cookie: new_cookie, .. },
+			)) => {
+				self.cookie.replace(new_cookie);
+
+				for registration in registrations {
+					for address in registration.record.addresses() {
+						let peer = registration.record.peer_id();
+						tracing::info!(%peer, %address, "Discovered peer");
+
+						let p2p_suffix = Protocol::P2p(peer);
+						let address_with_p2p =
+							if !address.ends_with(&Multiaddr::empty().with(p2p_suffix.clone())) {
+								address.clone().with(p2p_suffix)
+							} else {
+								address.clone()
+							};
+
+						self.swarm.dial(address_with_p2p).unwrap();
+					}
+				}
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
+				rendezvous::client::Event::Registered { namespace, ttl, rendezvous_node },
+			)) => {
+				tracing::info!(
+					"Registered for namespace '{}' at rendezvous point {} for the next {} seconds",
+					namespace,
+					rendezvous_node,
+					ttl
+				);
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(
+				rendezvous::client::Event::RegisterFailed { rendezvous_node, namespace, error },
+			)) => {
+				tracing::error!(
+					"Failed to register: rendezvous_node={}, namespace={}, error_code={:?}",
+					rendezvous_node,
+					namespace,
+					error
+				);
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Ping(ping::Event {
+				peer,
+				result: Ok(rtt),
+				..
+			})) => {
+				tracing::trace!(%peer, "Ping is {}ms", rtt.as_millis())
+			},
+			e => {
+				tracing::warn!("Unhandled event: {:?}", e);
+				// panic!("{e:?}")
+			},
 		}
 	}
 

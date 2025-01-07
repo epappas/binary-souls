@@ -2,8 +2,9 @@ use std::{collections::HashSet, error::Error};
 
 use futures::channel::oneshot;
 use libp2p::{
+	autonat,
 	core::Multiaddr,
-	kad,
+	gossipsub, identify, kad, mdns, ping, relay, rendezvous,
 	request_response::{self, ResponseChannel},
 	swarm::NetworkBehaviour,
 	PeerId,
@@ -12,8 +13,15 @@ use serde::{Deserialize, Serialize};
 
 #[derive(NetworkBehaviour)]
 pub(crate) struct Behaviour {
+	pub identify: identify::Behaviour,
 	pub request_response: request_response::cbor::Behaviour<FileRequest, FileResponse>,
+	pub rendezvous: rendezvous::client::Behaviour,
+	pub relay: relay::Behaviour,
+	pub ping: ping::Behaviour,
 	pub kademlia: kad::Behaviour<kad::store::MemoryStore>,
+	pub auto_nat: autonat::Behaviour,
+	pub mdns: mdns::tokio::Behaviour,
+	pub gossipsub: gossipsub::Behaviour,
 }
 
 #[derive(Debug)]
