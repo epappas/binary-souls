@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 #[derive(NetworkBehaviour)]
 pub(crate) struct Behaviour {
 	pub identify: identify::Behaviour,
-	pub request_response: request_response::cbor::Behaviour<FileRequest, FileResponse>,
+	pub request_response: request_response::cbor::Behaviour<LLMRequest, LLMResponse>,
 	pub rendezvous: rendezvous::client::Behaviour,
 	pub relay: relay::Behaviour,
 	pub ping: ping::Behaviour,
@@ -37,31 +37,35 @@ pub(crate) enum Command {
 		sender: oneshot::Sender<Result<(), Box<dyn Error + Send>>>,
 	},
 	StartProviding {
-		file_name: String,
+		agent_name: String,
 		sender: oneshot::Sender<()>,
 	},
 	GetProviders {
-		file_name: String,
+		agent_name: String,
 		sender: oneshot::Sender<HashSet<PeerId>>,
 	},
-	RequestFile {
-		file_name: String,
+	RequestAgent {
+		agent_name: String,
 		peer: PeerId,
 		sender: oneshot::Sender<Result<Vec<u8>, Box<dyn Error + Send>>>,
 	},
-	RespondFile {
-		file: Vec<u8>,
-		channel: ResponseChannel<FileResponse>,
+	RespondLLM {
+		llm_output: Vec<u8>,
+		channel: ResponseChannel<LLMResponse>,
+	},
+	GossipMessage {
+		topic: String,
+		message: String,
 	},
 }
 
 #[derive(Debug)]
 pub(crate) enum Event {
-	InboundRequest { request: String, channel: ResponseChannel<FileResponse> },
+	InboundRequest { request: String, channel: ResponseChannel<LLMResponse> },
 }
 
 // Simple file exchange protocol
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct FileRequest(pub String);
+pub(crate) struct LLMRequest(pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct FileResponse(pub Vec<u8>);
+pub(crate) struct LLMResponse(pub Vec<u8>);

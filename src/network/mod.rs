@@ -21,9 +21,11 @@ use crate::network::eventloop::EventLoop;
 use crate::network::types::{Behaviour, Event};
 
 static PROTOCOL_VERSION: &str = "/agentic-network/1.0.0";
+static EVERYONE_TOPIC: &str = "everyone";
 
 pub async fn new(
 	secret_key_seed: Option<u8>,
+	additional_topics: Vec<String>,
 ) -> Result<(Client, impl Stream<Item = Event>, libp2p::PeerId, EventLoop), Box<dyn Error>> {
 	// Create a public/private key pair, either random or based on a seed.
 	let id_keys = match secret_key_seed {
@@ -35,6 +37,7 @@ pub async fn new(
 		None => identity::Keypair::generate_ed25519(),
 	};
 	let peer_id = id_keys.public().to_peer_id();
+	let peer_id_topic = gossipsub::IdentTopic::new(peer_id.to_base58());
 
 	let mut swarm = libp2p::SwarmBuilder::with_existing_identity(id_keys)
 		.with_tokio()
@@ -86,6 +89,24 @@ pub async fn new(
 
 	swarm.behaviour_mut().kademlia.set_mode(Some(kad::Mode::Server));
 
+	tracing::trace!("Subscribed to topic: {EVERYONE_TOPIC}");
+	swarm
+		.behaviour_mut()
+		.gossipsub
+		.subscribe(&gossipsub::IdentTopic::new(EVERYONE_TOPIC))
+		.unwrap();
+
+	tracing::trace!("Subscribed to topic: {peer_id_topic}");
+	swarm.behaviour_mut().gossipsub.subscribe(&peer_id_topic).unwrap();
+
+	for topic in additional_topics {
+		swarm
+			.behaviour_mut()
+			.gossipsub
+			.subscribe(&gossipsub::IdentTopic::new(topic))
+			.unwrap();
+	}
+
 	let (command_sender, command_receiver) = mpsc::channel(0);
 	let (event_sender, event_receiver) = mpsc::channel(0);
 
@@ -93,6 +114,6 @@ pub async fn new(
 		Client { sender: command_sender },
 		event_receiver,
 		peer_id,
-		EventLoop::new(swarm, peer_id, command_receiver, event_sender, None, None, None, None),
+		EventLoop::new(swarm, command_receiver, event_sender, None, None, None, None),
 	))
 }

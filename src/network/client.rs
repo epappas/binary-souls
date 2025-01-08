@@ -4,12 +4,9 @@ use futures::{
 	channel::{mpsc, oneshot},
 	prelude::*,
 };
-use libp2p::{
-	core::Multiaddr,
-	request_response::ResponseChannel, PeerId,
-};
+use libp2p::{core::Multiaddr, request_response::ResponseChannel, PeerId};
 
-use crate::network::types::{Command, FileResponse};
+use crate::network::types::{Command, LLMResponse};
 
 #[derive(Clone)]
 pub(crate) struct Client {
@@ -44,49 +41,62 @@ impl Client {
 		receiver.await.expect("Sender not to be dropped.")
 	}
 
-	/// Advertise the local node as the provider of the given file on the DHT.
-	pub(crate) async fn start_providing(&mut self, file_name: String) {
+	/// Advertise the local node as the provider of the given agent on the DHT.
+	pub(crate) async fn start_providing(&mut self, agent_name: String) {
 		let (sender, receiver) = oneshot::channel();
 		self.sender
-			.send(Command::StartProviding { file_name, sender })
+			.send(Command::StartProviding { agent_name, sender })
 			.await
 			.expect("Command receiver not to be dropped.");
 		receiver.await.expect("Sender not to be dropped.");
 	}
 
 	/// Find the providers for the given file on the DHT.
-	pub(crate) async fn get_providers(&mut self, file_name: String) -> HashSet<PeerId> {
+	pub(crate) async fn get_providers(&mut self, agent_name: String) -> HashSet<PeerId> {
 		let (sender, receiver) = oneshot::channel();
 		self.sender
-			.send(Command::GetProviders { file_name, sender })
+			.send(Command::GetProviders { agent_name, sender })
 			.await
 			.expect("Command receiver not to be dropped.");
 		receiver.await.expect("Sender not to be dropped.")
 	}
 
 	/// Request the content of the given file from the given peer.
-	pub(crate) async fn request_file(
+	pub(crate) async fn request_agent(
 		&mut self,
 		peer: PeerId,
-		file_name: String,
+		agent_name: String,
 	) -> Result<Vec<u8>, Box<dyn Error + Send>> {
 		let (sender, receiver) = oneshot::channel();
 		self.sender
-			.send(Command::RequestFile { file_name, peer, sender })
+			.send(Command::RequestAgent { agent_name, peer, sender })
 			.await
 			.expect("Command receiver not to be dropped.");
 		receiver.await.expect("Sender not be dropped.")
 	}
 
-	/// Respond with the provided file content to the given request.
-	pub(crate) async fn respond_file(
+	/// Respond with the provided llm output content to the given request.
+	pub(crate) async fn respond_llm(
 		&mut self,
-		file: Vec<u8>,
-		channel: ResponseChannel<FileResponse>,
+		llm_output: Vec<u8>,
+		channel: ResponseChannel<LLMResponse>,
 	) {
 		self.sender
-			.send(Command::RespondFile { file, channel })
+			.send(Command::RespondLLM { llm_output, channel })
 			.await
 			.expect("Command receiver not to be dropped.");
+	}
+
+	/// Gossip the given message in the given topic.
+	pub(crate) async fn gossip(
+		&mut self,
+		topic: String,
+		message: String,
+	) -> Result<(), Box<dyn Error + Send>> {
+		self.sender
+			.send(Command::GossipMessage { topic, message })
+			.await
+			.expect("Command receiver not to be dropped.");
+		Ok(())
 	}
 }

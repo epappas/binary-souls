@@ -10,7 +10,7 @@ use futures::{
 	StreamExt,
 };
 use libp2p::{
-	identify, kad,
+	gossipsub, identify, kad, mdns,
 	multiaddr::Protocol,
 	ping, rendezvous,
 	request_response::{self, OutboundRequestId},
@@ -18,7 +18,7 @@ use libp2p::{
 	Multiaddr, PeerId,
 };
 
-use crate::network::types::{Behaviour, BehaviourEvent, Command, Event, FileRequest, FileResponse};
+use crate::network::types::{Behaviour, BehaviourEvent, Command, Event, LLMRequest, LLMResponse};
 
 type PendingDialResult = Result<(), Box<dyn Error + Send>>;
 type PendingDialSender = oneshot::Sender<PendingDialResult>;
@@ -35,7 +35,6 @@ pub(crate) struct EventLoop {
 	pending_start_providing: HashMap<kad::QueryId, oneshot::Sender<()>>,
 	pending_get_providers: HashMap<kad::QueryId, oneshot::Sender<HashSet<PeerId>>>,
 	pending_request_file: HashMap<OutboundRequestId, FileRequestSender>,
-	peer_id: PeerId,
 	cookie: Option<rendezvous::Cookie>,
 	namespace: Option<rendezvous::Namespace>,
 	rendezvous_point: Option<PeerId>,
@@ -47,7 +46,6 @@ impl EventLoop {
 	#[allow(clippy::too_many_arguments)]
 	pub(crate) fn new(
 		swarm: Swarm<Behaviour>,
-		peer_id: PeerId,
 		command_receiver: mpsc::Receiver<Command>,
 		event_sender: mpsc::Sender<Event>,
 		namespace: Option<rendezvous::Namespace>,
@@ -63,7 +61,6 @@ impl EventLoop {
 			pending_start_providing: Default::default(),
 			pending_get_providers: Default::default(),
 			pending_request_file: Default::default(),
-			peer_id,
 			cookie: None,
 			namespace,
 			rendezvous_point,
@@ -239,6 +236,12 @@ impl EventLoop {
 			},
 			SwarmEvent::IncomingConnectionError { .. } => {},
 			SwarmEvent::Dialing { peer_id: Some(peer_id), .. } => eprintln!("Dialing {peer_id}"),
+			SwarmEvent::Behaviour(BehaviourEvent::Identify(identify::Event::Sent {
+				peer_id,
+				..
+			})) => {
+				tracing::info!("Sent identify info to {peer_id:?}");
+			},
 			SwarmEvent::Behaviour(BehaviourEvent::Identify(identify::Event::Received {
 				info: identify::Info { observed_addr, .. },
 				..
@@ -289,6 +292,32 @@ impl EventLoop {
 					error
 				);
 			},
+			SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
+				for (peer_id, _multiaddr) in list {
+					tracing::trace!("mDNS discovered a new peer: {peer_id}");
+					self.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+				}
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
+				for (peer_id, _multiaddr) in list {
+					tracing::trace!("mDNS discover peer has expired: {peer_id}");
+					self.swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
+				}
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Gossipsub(gossipsub::Event::Message {
+				propagation_source: peer_id,
+				message_id: id,
+				message,
+			})) => {
+				tracing::info!(
+					"Got message: '{}' with id: {id} from peer: {peer_id}",
+					String::from_utf8_lossy(&message.data),
+				);
+				eprintln!(
+					"Got message: '{}' with id: {id} from peer: {peer_id}",
+					String::from_utf8_lossy(&message.data),
+				);
+			},
 			SwarmEvent::Behaviour(BehaviourEvent::Ping(ping::Event {
 				peer,
 				result: Ok(rtt),
@@ -326,37 +355,45 @@ impl EventLoop {
 					todo!("Already dialing peer.");
 				}
 			},
-			Command::StartProviding { file_name, sender } => {
+			Command::StartProviding { agent_name, sender } => {
 				let query_id = self
 					.swarm
 					.behaviour_mut()
 					.kademlia
-					.start_providing(file_name.into_bytes().into())
+					.start_providing(agent_name.into_bytes().into())
 					.expect("No store error.");
 				self.pending_start_providing.insert(query_id, sender);
 			},
-			Command::GetProviders { file_name, sender } => {
+			Command::GetProviders { agent_name, sender } => {
 				let query_id = self
 					.swarm
 					.behaviour_mut()
 					.kademlia
-					.get_providers(file_name.into_bytes().into());
+					.get_providers(agent_name.into_bytes().into());
 				self.pending_get_providers.insert(query_id, sender);
 			},
-			Command::RequestFile { file_name, peer, sender } => {
+			Command::RequestAgent { agent_name, peer, sender } => {
 				let request_id = self
 					.swarm
 					.behaviour_mut()
 					.request_response
-					.send_request(&peer, FileRequest(file_name));
+					.send_request(&peer, LLMRequest(agent_name));
 				self.pending_request_file.insert(request_id, sender);
 			},
-			Command::RespondFile { file, channel } => {
+			Command::RespondLLM { llm_output: file, channel } => {
 				self.swarm
 					.behaviour_mut()
 					.request_response
-					.send_response(channel, FileResponse(file))
+					.send_response(channel, LLMResponse(file))
 					.expect("Connection to peer to be still open.");
+			},
+			Command::GossipMessage { topic, message } => {
+				let topic = gossipsub::IdentTopic::new(topic);
+				self.swarm
+					.behaviour_mut()
+					.gossipsub
+					.publish(topic, message.into_bytes())
+					.expect("Gossip publish to send the message.");
 			},
 		}
 	}

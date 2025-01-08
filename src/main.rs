@@ -43,7 +43,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	let cli = Cli::parse();
 
 	let (mut network_client, mut network_events, peer_id, network_event_loop) =
-		network::new(cli.secret_key_seed).await?;
+		network::new(cli.secret_key_seed, vec![]).await?;
 
 	tracing::info!("Starting node...");
 	tracing::info!("Node ID: {:?}", peer_id);
@@ -69,38 +69,49 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	}
 
 	match cli.command {
-		Commands::Provide { path, name } => {
+		Commands::Gossip { topic, message } => {
+			tracing::info!("Gossiping message: [{topic}] {message}");
+			match network_client.gossip(topic, message).await {
+				Ok(()) => {
+					tracing::info!("Gossip done.");
+				},
+				Err(e) => tracing::error!("Failed to gossip message: {:?}", e),
+			}
+		},
+		Commands::Provide { name } => {
 			network_client.start_providing(name.clone()).await;
 
 			loop {
 				match network_events.next().await {
 					Some(network::types::Event::InboundRequest { request, channel }) => {
 						if request == name {
-							network_client.respond_file(std::fs::read(&path)?, channel).await;
+							network_client
+								.respond_llm("Hello from Agent".as_bytes().to_vec(), channel)
+								.await;
 						}
 					},
 					e => todo!("{:?}", e),
 				}
 			}
 		},
-		Commands::Get { name } => {
+		Commands::Llm { name } => {
 			let providers = network_client.get_providers(name.clone()).await;
 			if providers.is_empty() {
-				return Err(format!("Could not find provider for file {name}.").into());
+				return Err(format!("Could not find provider for agent {name}.").into());
 			}
 
 			let requests = providers.into_iter().map(|p| {
 				let mut network_client = network_client.clone();
 				let name = name.clone();
-				async move { network_client.request_file(p, name).await }.boxed()
+				async move { network_client.request_agent(p, name).await }.boxed()
 			});
 
-			let file_content = futures::future::select_ok(requests)
+			let agent_content = futures::future::select_ok(requests)
 				.await
-				.map_err(|_| "None of the providers returned file.")?
+				.map_err(|_| "None of the providers returned agent.")?
 				.0;
 
-			std::io::stdout().write_all(&file_content)?;
+			std::io::stdout().write_all(&agent_content)?;
 		},
 	}
 

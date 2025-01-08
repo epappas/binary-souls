@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
 use libp2p::core::Multiaddr;
-use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 #[command(
@@ -31,16 +30,21 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
-	#[clap(about = "Provide a file to the network")]
+	#[clap(about = "Provide a an Ai Agent to the network")]
 	Provide {
-		#[arg(long, help = "Path to the file to provide")]
-		path: PathBuf,
-		#[arg(long, help = "Name of the file to provide")]
+		#[arg(long, help = "Name of the Agent to provide")]
 		name: String,
 	},
-	#[clap(about = "Get a file from the network")]
-	Get {
-		#[arg(long, help = "Name of the file to seek in the network")]
+	#[clap(about = "request LLM content froman agent in the network")]
+	Llm {
+		#[arg(long, help = "Name of the agent to seek in the network")]
 		name: String,
+	},
+	#[clap(about = "Gossip a message in the network")]
+	Gossip {
+		#[arg(long, help = "Topic to publish the message in")]
+		topic: String,
+		#[arg(long, help = "Message to publish")]
+		message: String,
 	},
 }
