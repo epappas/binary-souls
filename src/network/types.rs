@@ -7,7 +7,7 @@ use libp2p::{
 	gossipsub, identify, kad, mdns, ping, relay, rendezvous,
 	request_response::{self, ResponseChannel},
 	swarm::NetworkBehaviour,
-	PeerId,
+	upnp, PeerId,
 };
 use serde::{Deserialize, Serialize};
 
@@ -22,6 +22,7 @@ pub(crate) struct Behaviour {
 	pub auto_nat: autonat::Behaviour,
 	pub mdns: mdns::tokio::Behaviour,
 	pub gossipsub: gossipsub::Behaviour,
+	pub upnp: upnp::tokio::Behaviour,
 }
 
 #[derive(Debug)]

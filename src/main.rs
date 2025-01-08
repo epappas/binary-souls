@@ -36,7 +36,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	}
 
 	let _ = tracing_subscriber::fmt()
-		.with_env_filter(EnvFilter::from_default_env())
+		.with_level(true)
+		.with_env_filter(EnvFilter::from_env("RUST_LOG"))
 		.try_init();
 
 	let cli = Cli::parse();

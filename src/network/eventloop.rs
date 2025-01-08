@@ -25,6 +25,8 @@ type PendingDialSender = oneshot::Sender<PendingDialResult>;
 type FileRequestResult = Result<Vec<u8>, Box<dyn Error + Send>>;
 type FileRequestSender = oneshot::Sender<FileRequestResult>;
 
+static NAMESPACE: &str = "binary-souls";
+
 pub(crate) struct EventLoop {
 	swarm: Swarm<Behaviour>,
 	command_receiver: mpsc::Receiver<Command>,
@@ -33,16 +35,25 @@ pub(crate) struct EventLoop {
 	pending_start_providing: HashMap<kad::QueryId, oneshot::Sender<()>>,
 	pending_get_providers: HashMap<kad::QueryId, oneshot::Sender<HashSet<PeerId>>>,
 	pending_request_file: HashMap<OutboundRequestId, FileRequestSender>,
+	peer_id: PeerId,
 	cookie: Option<rendezvous::Cookie>,
 	namespace: Option<rendezvous::Namespace>,
 	rendezvous_point: Option<PeerId>,
+	rendezvous_point_address: Option<Multiaddr>,
+	external_address: Option<Multiaddr>,
 }
 
 impl EventLoop {
+	#[allow(clippy::too_many_arguments)]
 	pub(crate) fn new(
 		swarm: Swarm<Behaviour>,
+		peer_id: PeerId,
 		command_receiver: mpsc::Receiver<Command>,
 		event_sender: mpsc::Sender<Event>,
+		namespace: Option<rendezvous::Namespace>,
+		rendezvous_point: Option<PeerId>,
+		rendezvous_point_address: Option<Multiaddr>,
+		external_address: Option<Multiaddr>,
 	) -> Self {
 		Self {
 			swarm,
@@ -52,14 +63,52 @@ impl EventLoop {
 			pending_start_providing: Default::default(),
 			pending_get_providers: Default::default(),
 			pending_request_file: Default::default(),
+			peer_id,
 			cookie: None,
-			namespace: None,
-			rendezvous_point: None,
+			namespace,
+			rendezvous_point,
+			rendezvous_point_address,
+			external_address,
+		}
+	}
+
+	fn dial_rendezvous_point_address(&mut self) {
+		if let Some(rendezvous_point_address) = &self.rendezvous_point_address {
+			self.swarm.dial(rendezvous_point_address.clone()).unwrap();
+		}
+	}
+
+	fn register_rendezvous_point(&mut self) {
+		match self.rendezvous_point {
+			Some(rendezvous_point) => {
+				if let Err(error) = self.swarm.behaviour_mut().rendezvous.register(
+					rendezvous::Namespace::from_static(NAMESPACE),
+					rendezvous_point,
+					None,
+				) {
+					tracing::error!("Failed to register: {error}");
+				} else {
+					tracing::info!("Registered rendezvous point {rendezvous_point}");
+				}
+			},
+			None => {
+				tracing::trace!("No rendezvous point to register with");
+			},
+		}
+	}
+
+	fn add_external_address(&mut self) {
+		if let Some(external_address) = &self.external_address {
+			self.swarm.add_external_address(external_address.clone());
 		}
 	}
 
 	pub(crate) async fn run(mut self) {
 		let mut discover_tick = tokio::time::interval(Duration::from_secs(30));
+
+		self.add_external_address();
+		self.dial_rendezvous_point_address();
+		self.register_rendezvous_point();
 
 		loop {
 			tokio::select! {
@@ -169,7 +218,7 @@ impl EventLoop {
 					}
 				}
 				if let Err(error) = self.swarm.behaviour_mut().rendezvous.register(
-					rendezvous::Namespace::from_static("rendezvous"),
+					rendezvous::Namespace::from_static(NAMESPACE),
 					peer_id,
 					None,
 				) {

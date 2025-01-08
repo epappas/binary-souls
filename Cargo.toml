@@ -43,6 +43,7 @@ libp2p = { version = "^0.54.1", features = [
 	"ping",
 	"relay",
 	"rendezvous",
+	"upnp",
 ] }
 
 [dev-dependencies]

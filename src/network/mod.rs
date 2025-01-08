@@ -13,7 +13,7 @@ use futures::{channel::mpsc, prelude::*};
 use libp2p::{
 	autonat, gossipsub, identify, identity, kad, mdns, noise, ping, relay, rendezvous,
 	request_response::{self, ProtocolSupport},
-	tcp, tls, yamux, StreamProtocol,
+	tcp, tls, upnp, yamux, StreamProtocol,
 };
 
 use crate::network::client::Client;
@@ -59,6 +59,7 @@ pub async fn new(
 			rendezvous: rendezvous::client::Behaviour::new(key.clone()),
 			relay: relay::Behaviour::new(key.public().to_peer_id(), Default::default()),
 			ping: ping::Behaviour::new(ping::Config::new()),
+			upnp: upnp::tokio::Behaviour::default(),
 			auto_nat: autonat::Behaviour::new(
 				key.public().to_peer_id(),
 				autonat::Config { only_global_ips: false, ..Default::default() },
@@ -92,6 +93,6 @@ pub async fn new(
 		Client { sender: command_sender },
 		event_receiver,
 		peer_id,
-		EventLoop::new(swarm, command_receiver, event_sender),
+		EventLoop::new(swarm, peer_id, command_receiver, event_sender, None, None, None, None),
 	))
 }
