@@ -2,10 +2,12 @@
 
 #[cfg(not(debug_assertions))]
 use human_panic::setup_panic;
+use tokio_util::sync::CancellationToken;
 
 #[cfg(debug_assertions)]
 extern crate better_panic;
 
+mod agent;
 mod cli;
 mod network;
 
@@ -42,6 +44,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	let cli = Cli::parse();
 
+	let cancellation_token = CancellationToken::new();
+	let cancellation_token_clone = cancellation_token.clone();
+
 	let (mut network_client, mut network_events, peer_id, network_event_loop) =
 		network::new(cli.secret_key_seed, vec![]).await?;
 
@@ -49,14 +54,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	tracing::info!("Node ID: {:?}", peer_id);
 
 	// Spawn the network task for it to run in the background.
-	spawn(network_event_loop.run());
+	spawn(network_event_loop.run(cancellation_token_clone));
 
-	if let Some(listen_address) = cli.listen_address {
+	for addr in cli.listen_address {
 		network_client
-			.start_listening(listen_address.clone())
+			.start_listening(addr.clone())
 			.await
 			.expect("Listening not to fail.");
-		tracing::info!("Listening on: {:?}", listen_address);
+		tracing::info!("Listening on: {:?}", addr);
 	}
 
 	// In case the user provided an address of a peer on the CLI, dial it.
@@ -83,18 +88,22 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 			loop {
 				match network_events.next().await {
-					Some(network::types::Event::InboundRequest { request, channel }) => {
-						if request == name {
-							network_client
-								.respond_llm("Hello from Agent".as_bytes().to_vec(), channel)
-								.await;
+					Some(network::types::Event::InboundRequest {
+						agent_name,
+						message,
+						channel,
+					}) => {
+						if agent_name == name {
+							let output = crate::agent::respond_llm(message).await?;
+
+							network_client.respond_llm(output.as_bytes().to_vec(), channel).await;
 						}
 					},
 					e => todo!("{:?}", e),
 				}
 			}
 		},
-		Commands::Llm { name } => {
+		Commands::Llm { name, message } => {
 			let providers = network_client.get_providers(name.clone()).await;
 			if providers.is_empty() {
 				return Err(format!("Could not find provider for agent {name}.").into());
@@ -103,7 +112,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 			let requests = providers.into_iter().map(|p| {
 				let mut network_client = network_client.clone();
 				let name = name.clone();
-				async move { network_client.request_agent(p, name).await }.boxed()
+				let message = message.clone();
+				async move { network_client.request_agent(p, name, message).await }.boxed()
 			});
 
 			let agent_content = futures::future::select_ok(requests)

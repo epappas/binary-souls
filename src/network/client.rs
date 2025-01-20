@@ -66,10 +66,11 @@ impl Client {
 		&mut self,
 		peer: PeerId,
 		agent_name: String,
+		message: String,
 	) -> Result<Vec<u8>, Box<dyn Error + Send>> {
 		let (sender, receiver) = oneshot::channel();
 		self.sender
-			.send(Command::RequestAgent { agent_name, peer, sender })
+			.send(Command::RequestAgent { agent_name, message, peer, sender })
 			.await
 			.expect("Command receiver not to be dropped.");
 		receiver.await.expect("Sender not be dropped.")

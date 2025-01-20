@@ -46,6 +46,7 @@ pub(crate) enum Command {
 	},
 	RequestAgent {
 		agent_name: String,
+		message: String,
 		peer: PeerId,
 		sender: oneshot::Sender<Result<Vec<u8>, Box<dyn Error + Send>>>,
 	},
@@ -61,11 +62,11 @@ pub(crate) enum Command {
 
 #[derive(Debug)]
 pub(crate) enum Event {
-	InboundRequest { request: String, channel: ResponseChannel<LLMResponse> },
+	InboundRequest { agent_name: String, message: String, channel: ResponseChannel<LLMResponse> },
 }
 
 // Simple file exchange protocol
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct LLMRequest(pub String);
+pub(crate) struct LLMRequest(pub String, pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct LLMResponse(pub Vec<u8>);

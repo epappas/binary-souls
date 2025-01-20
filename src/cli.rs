@@ -18,11 +18,21 @@ pub struct Cli {
 	)]
 	pub secret_key_seed: Option<u8>,
 
-	#[arg(long, short = 'p', value_name = "PEER", help = "Multiaddress of a peer to connect to")]
+	#[arg(
+		long,
+		short = 'p',
+		value_name = "PEER",
+		help = "Multiaddress of a peer to connect to  (can be multiple)"
+	)]
 	pub peer: Vec<Multiaddr>,
 
-	#[arg(long, short = 'l', value_name = "LISTEN_ADDRESS", help = "Multiaddress to listen on")]
-	pub listen_address: Option<Multiaddr>,
+	#[arg(
+		long,
+		short = 'l',
+		value_name = "LISTEN_ADDRESS",
+		help = "Multiaddress to listen on (can be multiple)"
+	)]
+	pub listen_address: Vec<Multiaddr>,
 
 	#[clap(subcommand)]
 	pub command: Commands,
@@ -39,6 +49,8 @@ pub enum Commands {
 	Llm {
 		#[arg(long, help = "Name of the agent to seek in the network")]
 		name: String,
+		#[arg(long, help = "Message to send to the agent")]
+		message: String,
 	},
 	#[clap(about = "Gossip a message in the network")]
 	Gossip {

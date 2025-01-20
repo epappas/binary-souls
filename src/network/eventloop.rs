@@ -17,6 +17,7 @@ use libp2p::{
 	swarm::{Swarm, SwarmEvent},
 	Multiaddr, PeerId,
 };
+use tokio_util::sync::CancellationToken;
 
 use crate::network::types::{Behaviour, BehaviourEvent, Command, Event, LLMRequest, LLMResponse};
 
@@ -100,7 +101,7 @@ impl EventLoop {
 		}
 	}
 
-	pub(crate) async fn run(mut self) {
+	pub(crate) async fn run(mut self, cancellation_token: CancellationToken) {
 		let mut discover_tick = tokio::time::interval(Duration::from_secs(30));
 
 		self.add_external_address();
@@ -109,6 +110,10 @@ impl EventLoop {
 
 		loop {
 			tokio::select! {
+				_ = cancellation_token.cancelled() => {
+					// placeholder to implement gracefully shitdown.
+					break;
+				},
 				event = self.swarm.select_next_some() => self.handle_event(event).await,
 				command = self.command_receiver.next() => match command {
 					Some(c) => self.handle_command(c).await,
@@ -172,7 +177,11 @@ impl EventLoop {
 			)) => match message {
 				request_response::Message::Request { request, channel, .. } => {
 					self.event_sender
-						.send(Event::InboundRequest { request: request.0, channel })
+						.send(Event::InboundRequest {
+							agent_name: request.0,
+							message: request.1,
+							channel,
+						})
 						.await
 						.expect("Event receiver not to be dropped.");
 				},
@@ -356,13 +365,19 @@ impl EventLoop {
 				}
 			},
 			Command::StartProviding { agent_name, sender } => {
-				let query_id = self
+				match self
 					.swarm
 					.behaviour_mut()
 					.kademlia
 					.start_providing(agent_name.into_bytes().into())
-					.expect("No store error.");
-				self.pending_start_providing.insert(query_id, sender);
+				{
+					Ok(query_id) => {
+						self.pending_start_providing.insert(query_id, sender);
+					},
+					Err(e) => {
+						tracing::error!("Failed to start providing: {:?}", e);
+					},
+				}
 			},
 			Command::GetProviders { agent_name, sender } => {
 				let query_id = self
@@ -372,28 +387,38 @@ impl EventLoop {
 					.get_providers(agent_name.into_bytes().into());
 				self.pending_get_providers.insert(query_id, sender);
 			},
-			Command::RequestAgent { agent_name, peer, sender } => {
+			Command::RequestAgent { agent_name, message, peer, sender } => {
 				let request_id = self
 					.swarm
 					.behaviour_mut()
 					.request_response
-					.send_request(&peer, LLMRequest(agent_name));
+					.send_request(&peer, LLMRequest(agent_name, message));
 				self.pending_request_file.insert(request_id, sender);
 			},
 			Command::RespondLLM { llm_output: file, channel } => {
-				self.swarm
+				match self
+					.swarm
 					.behaviour_mut()
 					.request_response
 					.send_response(channel, LLMResponse(file))
-					.expect("Connection to peer to be still open.");
+				{
+					Ok(()) => {},
+					Err(e) => {
+						tracing::error!("Failed to send response: {:?}", e);
+					},
+				}
 			},
 			Command::GossipMessage { topic, message } => {
+				tracing::info!("About to Gossip at {topic}: {message}");
 				let topic = gossipsub::IdentTopic::new(topic);
-				self.swarm
-					.behaviour_mut()
-					.gossipsub
-					.publish(topic, message.into_bytes())
-					.expect("Gossip publish to send the message.");
+				match self.swarm.behaviour_mut().gossipsub.publish(topic, message.into_bytes()) {
+					Ok(message_id) => {
+						tracing::info!("Gossip done with message id: {message_id}");
+					},
+					Err(e) => {
+						tracing::error!("Failed to gossip message: {e}");
+					},
+				}
 			},
 		}
 	}

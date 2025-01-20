@@ -74,6 +74,10 @@ pub async fn new(
 				gossipsub::ConfigBuilder::default()
 					.heartbeat_interval(Duration::from_secs(10)) // This is set to aid debugging by not cluttering the log space
 					.validation_mode(gossipsub::ValidationMode::Strict) // This sets the kind of message validation. The default is Strict (enforce message
+					.allow_self_origin(true)
+					.history_length(10)
+					.history_gossip(10)
+					.max_transmit_size(1024 * 1024 * 10)
 					.message_id_fn(|message: &gossipsub::Message| {
 						let mut s = DefaultHasher::new();
 						message.data.hash(&mut s);
