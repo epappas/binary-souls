@@ -19,7 +19,7 @@ use libp2p::{
 };
 use tokio_util::sync::CancellationToken;
 
-use crate::network::types::{Behaviour, BehaviourEvent, Command, Event, LLMRequest, LLMResponse};
+use crate::types::{Behaviour, BehaviourEvent, Command, Event, LLMRequest, LLMResponse};
 
 type PendingDialResult = Result<(), Box<dyn Error + Send>>;
 type PendingDialSender = oneshot::Sender<PendingDialResult>;
@@ -28,7 +28,7 @@ type FileRequestSender = oneshot::Sender<FileRequestResult>;
 
 static NAMESPACE: &str = "binary-souls";
 
-pub(crate) struct EventLoop {
+pub struct EventLoop {
 	swarm: Swarm<Behaviour>,
 	command_receiver: mpsc::Receiver<Command>,
 	event_sender: mpsc::Sender<Event>,
@@ -45,7 +45,7 @@ pub(crate) struct EventLoop {
 
 impl EventLoop {
 	#[allow(clippy::too_many_arguments)]
-	pub(crate) fn new(
+	pub fn new(
 		swarm: Swarm<Behaviour>,
 		command_receiver: mpsc::Receiver<Command>,
 		event_sender: mpsc::Sender<Event>,
@@ -101,7 +101,7 @@ impl EventLoop {
 		}
 	}
 
-	pub(crate) async fn run(mut self, cancellation_token: CancellationToken) {
+	pub async fn run(mut self, cancellation_token: CancellationToken) {
 		let mut discover_tick = tokio::time::interval(Duration::from_secs(30));
 
 		self.add_external_address();

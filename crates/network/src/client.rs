@@ -6,19 +6,16 @@ use futures::{
 };
 use libp2p::{core::Multiaddr, request_response::ResponseChannel, PeerId};
 
-use crate::network::types::{Command, LLMResponse};
+use crate::types::{Command, LLMResponse};
 
 #[derive(Clone)]
-pub(crate) struct Client {
+pub struct Client {
 	pub sender: mpsc::Sender<Command>,
 }
 
 impl Client {
 	/// Listen for incoming connections on the given address.
-	pub(crate) async fn start_listening(
-		&mut self,
-		addr: Multiaddr,
-	) -> Result<(), Box<dyn Error + Send>> {
+	pub async fn start_listening(&mut self, addr: Multiaddr) -> Result<(), Box<dyn Error + Send>> {
 		let (sender, receiver) = oneshot::channel();
 		self.sender
 			.send(Command::StartListening { addr, sender })
@@ -28,7 +25,7 @@ impl Client {
 	}
 
 	/// Dial the given peer at the given address.
-	pub(crate) async fn dial(
+	pub async fn dial(
 		&mut self,
 		peer_id: PeerId,
 		peer_addr: Multiaddr,
@@ -42,7 +39,7 @@ impl Client {
 	}
 
 	/// Advertise the local node as the provider of the given agent on the DHT.
-	pub(crate) async fn start_providing(&mut self, agent_name: String) {
+	pub async fn start_providing(&mut self, agent_name: String) {
 		let (sender, receiver) = oneshot::channel();
 		self.sender
 			.send(Command::StartProviding { agent_name, sender })
@@ -52,7 +49,7 @@ impl Client {
 	}
 
 	/// Find the providers for the given file on the DHT.
-	pub(crate) async fn get_providers(&mut self, agent_name: String) -> HashSet<PeerId> {
+	pub async fn get_providers(&mut self, agent_name: String) -> HashSet<PeerId> {
 		let (sender, receiver) = oneshot::channel();
 		self.sender
 			.send(Command::GetProviders { agent_name, sender })
@@ -62,7 +59,7 @@ impl Client {
 	}
 
 	/// Request the content of the given file from the given peer.
-	pub(crate) async fn request_agent(
+	pub async fn request_agent(
 		&mut self,
 		peer: PeerId,
 		agent_name: String,
@@ -77,7 +74,7 @@ impl Client {
 	}
 
 	/// Respond with the provided llm output content to the given request.
-	pub(crate) async fn respond_llm(
+	pub async fn respond_llm(
 		&mut self,
 		llm_output: Vec<u8>,
 		channel: ResponseChannel<LLMResponse>,
@@ -89,7 +86,7 @@ impl Client {
 	}
 
 	/// Gossip the given message in the given topic.
-	pub(crate) async fn gossip(
+	pub async fn gossip(
 		&mut self,
 		topic: String,
 		message: String,

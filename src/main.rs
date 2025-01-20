@@ -9,13 +9,12 @@ extern crate better_panic;
 
 mod agent;
 mod cli;
-mod network;
 
 use std::{error::Error, io::Write};
 
 use clap::Parser;
 use futures::{prelude::*, StreamExt};
-use libp2p::multiaddr::Protocol;
+use network::Protocol;
 use tokio::task::spawn;
 use tracing_subscriber::EnvFilter;
 

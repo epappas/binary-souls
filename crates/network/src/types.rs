@@ -12,7 +12,7 @@ use libp2p::{
 use serde::{Deserialize, Serialize};
 
 #[derive(NetworkBehaviour)]
-pub(crate) struct Behaviour {
+pub struct Behaviour {
 	pub identify: identify::Behaviour,
 	pub request_response: request_response::cbor::Behaviour<LLMRequest, LLMResponse>,
 	pub rendezvous: rendezvous::client::Behaviour,
@@ -26,7 +26,7 @@ pub(crate) struct Behaviour {
 }
 
 #[derive(Debug)]
-pub(crate) enum Command {
+pub enum Command {
 	StartListening {
 		addr: Multiaddr,
 		sender: oneshot::Sender<Result<(), Box<dyn Error + Send>>>,
@@ -61,12 +61,12 @@ pub(crate) enum Command {
 }
 
 #[derive(Debug)]
-pub(crate) enum Event {
+pub enum Event {
 	InboundRequest { agent_name: String, message: String, channel: ResponseChannel<LLMResponse> },
 }
 
 // Simple file exchange protocol
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct LLMRequest(pub String, pub String);
+pub struct LLMRequest(pub String, pub String);
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct LLMResponse(pub Vec<u8>);
+pub struct LLMResponse(pub Vec<u8>);

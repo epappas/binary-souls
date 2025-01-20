@@ -16,9 +16,12 @@ use libp2p::{
 	tcp, tls, upnp, yamux, StreamProtocol,
 };
 
-use crate::network::client::Client;
-use crate::network::eventloop::EventLoop;
-use crate::network::types::{Behaviour, Event};
+pub use crate::client::Client;
+pub use crate::eventloop::EventLoop;
+pub use crate::types::{Behaviour, Event};
+
+pub use libp2p::multiaddr::Protocol;
+pub use libp2p::Multiaddr;
 
 static PROTOCOL_VERSION: &str = "/agentic-network/1.0.0";
 static EVERYONE_TOPIC: &str = "everyone";

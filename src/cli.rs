@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use libp2p::core::Multiaddr;
+use network::Multiaddr;
 
 #[derive(Parser, Debug)]
 #[command(
