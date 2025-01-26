@@ -40,6 +40,8 @@ pub struct Cli {
 
 #[derive(Subcommand, Debug)]
 pub enum Commands {
+	#[clap(about = "Bootstrap the network")]
+	Bootstrap {},
 	#[clap(about = "Provide a an Ai Agent to the network")]
 	Provide {
 		#[arg(long, help = "Name of the Agent to provide")]

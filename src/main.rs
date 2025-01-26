@@ -10,7 +10,7 @@ extern crate better_panic;
 mod agent;
 mod cli;
 
-use std::{error::Error, io::Write};
+use std::{error::Error, io::Write, time::Duration};
 
 use clap::Parser;
 use futures::{prelude::*, StreamExt};
@@ -38,6 +38,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
 	let _ = tracing_subscriber::fmt()
 		.with_level(true)
+		.with_line_number(true)
 		.with_env_filter(EnvFilter::from_env("RUST_LOG"))
 		.try_init();
 
@@ -68,10 +69,20 @@ async fn main() -> Result<(), Box<dyn Error>> {
 			return Err("Expect peer multiaddr to contain peer ID.".into());
 		};
 		network_client.dial(peer_id, addr).await.expect("Dial to succeed");
-		tracing::debug!("Dialed peer: {:?}", peer_id);
+		tracing::info!("Dialed peer: {:?}", peer_id);
 	}
 
 	match cli.command {
+		Commands::Bootstrap {} => {
+			let mut discover_tick = tokio::time::interval(Duration::from_secs(30));
+
+			loop {
+				tokio::select! {
+					_ = discover_tick.tick() => {
+					},
+				}
+			}
+		},
 		Commands::Gossip { topic, message } => {
 			tracing::info!("Gossiping message: [{topic}] {message}");
 			match network_client.gossip(topic, message).await {
@@ -91,6 +102,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 						message,
 						channel,
 					}) => {
+						tracing::info!("Received request for agent: {:?}", agent_name);
 						if agent_name == name {
 							let output = crate::agent::respond_llm(message).await?;
 
@@ -106,6 +118,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
 			if providers.is_empty() {
 				return Err(format!("Could not find provider for agent {name}.").into());
 			}
+
+			tracing::info!("Requesting agent: {:?} from providers: {:?}", name, providers);
 
 			let requests = providers.into_iter().map(|p| {
 				let mut network_client = network_client.clone();

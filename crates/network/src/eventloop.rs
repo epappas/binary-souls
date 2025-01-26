@@ -71,12 +71,14 @@ impl EventLoop {
 	}
 
 	fn dial_rendezvous_point_address(&mut self) {
+		tracing::info!("Dialing rendezvous point address");
 		if let Some(rendezvous_point_address) = &self.rendezvous_point_address {
 			self.swarm.dial(rendezvous_point_address.clone()).unwrap();
 		}
 	}
 
 	fn register_rendezvous_point(&mut self) {
+		tracing::info!("Registering rendezvous point");
 		match self.rendezvous_point {
 			Some(rendezvous_point) => {
 				if let Err(error) = self.swarm.behaviour_mut().rendezvous.register(
@@ -90,12 +92,13 @@ impl EventLoop {
 				}
 			},
 			None => {
-				tracing::trace!("No rendezvous point to register with");
+				tracing::info!("No rendezvous point to register with");
 			},
 		}
 	}
 
 	fn add_external_address(&mut self) {
+		tracing::info!("Adding external address");
 		if let Some(external_address) = &self.external_address {
 			self.swarm.add_external_address(external_address.clone());
 		}
@@ -139,6 +142,7 @@ impl EventLoop {
 					..
 				},
 			)) => {
+				tracing::info!("Started providing");
 				let sender: oneshot::Sender<()> = self
 					.pending_start_providing
 					.remove(&id)
@@ -157,6 +161,7 @@ impl EventLoop {
 					..
 				},
 			)) => {
+				tracing::info!("Found providers for query {id}");
 				if let Some(sender) = self.pending_get_providers.remove(&id) {
 					providers.clone().iter().for_each(|p| {
 						tracing::info!("Found provider: {p}");
@@ -177,6 +182,27 @@ impl EventLoop {
 				},
 			)) => {
 				tracing::info!("No providers found for query {id}");
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(
+				kad::Event::OutboundQueryProgressed {
+					id,
+					result:
+						kad::QueryResult::Bootstrap(Ok(kad::BootstrapOk { peer, num_remaining })),
+					..
+				},
+			)) => {
+				tracing::info!(
+					"Bootstrap query to {peer} succeeded. {num_remaining} peers remaining query id {id}"
+				);
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(
+				kad::Event::OutboundQueryProgressed {
+					id,
+					result: kad::QueryResult::Bootstrap(result),
+					..
+				},
+			)) => {
+				tracing::info!("Unhandled bootstrap query result for query {id}: {result:#?}");
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(kad::Event::ModeChanged {
 				new_mode,
@@ -214,18 +240,18 @@ impl EventLoop {
 			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(kad::Event::InboundRequest {
 				request: kad::InboundRequest::FindNode { num_closer_peers, .. },
 			})) => {
-				tracing::trace!("Received FindNode request for {num_closer_peers} closer peers");
+				tracing::info!("Received FindNode request for {num_closer_peers} closer peers");
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(kad::Event::InboundRequest {
 				request:
 					kad::InboundRequest::GetProvider { num_closer_peers, num_provider_peers, .. },
 			})) => {
-				tracing::trace!("Received GetProvider request for {num_closer_peers} closer peers and {num_provider_peers} provider peers");
+				tracing::info!("Received GetProvider request for {num_closer_peers} closer peers and {num_provider_peers} provider peers");
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(kad::Event::InboundRequest {
 				request: kad::InboundRequest::GetRecord { num_closer_peers, present_locally },
 			})) => {
-				tracing::trace!("Received GetRecord request for {num_closer_peers} closer peers and {present_locally} present locally");
+				tracing::info!("Received GetRecord request for {num_closer_peers} closer peers and {present_locally} present locally");
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(kad::Event::InboundRequest {
 				request:
@@ -238,7 +264,7 @@ impl EventLoop {
 				let key_hash = sha256::digest(key.to_vec());
 				let value_hash = sha256::digest(value.to_vec());
 				let publisher_or_empty = publisher.map(|p| p.to_string()).unwrap_or_default();
-				tracing::trace!("Received PutRecord request from {source} on connection {connection} with record (key_hash = {key_hash}, value_hash = {value_hash}, publisher = {publisher_or_empty})");
+				tracing::info!("Received PutRecord request from {source} on connection {connection} with record (key_hash = {key_hash}, value_hash = {value_hash}, publisher = {publisher_or_empty})");
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(kad::Event::InboundRequest {
 				request:
@@ -249,35 +275,40 @@ impl EventLoop {
 			})) => {
 				let addr_len = addresses.len();
 				let key_hash = sha256::digest(key.to_vec());
-				tracing::trace!("Received AddProvider request for {key_hash} from {provider} with {addr_len} addresses");
+				tracing::info!("Received AddProvider request for {key_hash} from {provider} with {addr_len} addresses");
 			},
-			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(_)) => {
-				tracing::trace!("Unhandled Kademlia event");
+			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(kad::Event::InboundRequest {
+				request: kad::InboundRequest::AddProvider { record: None, .. },
+			})) => {
+				tracing::info!("Received AddProvider request with no record.");
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Kademlia(event)) => {
+				tracing::info!("Unhandled Kademlia event: {:?}", event);
 			},
 
 			// -- Relay events
 			SwarmEvent::Behaviour(BehaviourEvent::Relay(
 				relay::Event::ReservationReqAccepted { src_peer_id, renewed },
 			)) => {
-				tracing::trace!(
+				tracing::info!(
 					"Reservation request accepted from {src_peer_id}. Renewed: {renewed}"
 				);
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Relay(relay::Event::ReservationReqDenied {
 				src_peer_id,
 			})) => {
-				tracing::trace!("Reservation request denied from {src_peer_id}");
+				tracing::info!("Reservation request denied from {src_peer_id}");
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Relay(relay::Event::ReservationTimedOut {
 				src_peer_id,
 			})) => {
-				tracing::trace!("Reservation timed out from {src_peer_id}");
+				tracing::info!("Reservation timed out from {src_peer_id}");
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Relay(relay::Event::CircuitReqAccepted {
 				src_peer_id,
 				dst_peer_id,
 			})) => {
-				tracing::trace!("Circuit request accepted from {src_peer_id} to {dst_peer_id}");
+				tracing::info!("Circuit request accepted from {src_peer_id} to {dst_peer_id}");
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Relay(relay::Event::CircuitClosed {
 				src_peer_id,
@@ -285,9 +316,12 @@ impl EventLoop {
 				error,
 			})) => {
 				let error_or_empty = error.map(|e| e.to_string()).unwrap_or_default();
-				tracing::trace!(
+				tracing::info!(
 					"Circuit closed from {src_peer_id} to {dst_peer_id}. Error: {error_or_empty}"
 				);
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::Relay(event)) => {
+				tracing::info!("Unhandled Relay event: {:?}", event);
 			},
 
 			// -- UPnP events
@@ -471,6 +505,15 @@ impl EventLoop {
 				let peer_or_empty = peer.map(|p| p.to_string()).unwrap_or_default();
 				tracing::error!("Outbound probe error for {peer_or_empty}: Connection closed");
 			},
+			SwarmEvent::Behaviour(BehaviourEvent::AutoNat(autonat::Event::StatusChanged {
+				old,
+				new,
+			})) => {
+				tracing::info!("Status changed from {old:?} to {new:?}");
+			},
+			SwarmEvent::Behaviour(BehaviourEvent::AutoNat(event)) => {
+				tracing::info!("Unhandled AutoNat event: {:?}", event);
+			},
 
 			// -- Request-Response events
 			SwarmEvent::Behaviour(BehaviourEvent::RequestResponse(
@@ -556,7 +599,7 @@ impl EventLoop {
 				tracing::info!("Connection established with rendezvous point {}", peer_id);
 			},
 			SwarmEvent::ConnectionClosed { peer_id, cause: Some(error), .. } => {
-				tracing::trace!("Lost connection with {} : {}", peer_id.to_base58(), error);
+				tracing::info!("Lost connection with {} : {}", peer_id.to_base58(), error);
 			},
 			SwarmEvent::OutgoingConnectionError { peer_id, error, .. } => {
 				if let Some(peer_id) = peer_id {
@@ -584,7 +627,7 @@ impl EventLoop {
 			SwarmEvent::ListenerClosed { listener_id, addresses, .. } => {
 				let addresses_in_string =
 					addresses.iter().map(|a| a.to_string()).collect::<Vec<String>>().join(", ");
-				tracing::trace!(
+				tracing::info!(
 					"Listener closed with listener_id {listener_id} and addresses {addresses_in_string}"
 				);
 			},
@@ -593,16 +636,16 @@ impl EventLoop {
 				eprintln!("Dialing {peer_id}");
 			},
 			SwarmEvent::NewExternalAddrCandidate { address } => {
-				tracing::trace!("New external address candidate: {address}");
+				tracing::info!("New external address candidate: {address}");
 			},
 			SwarmEvent::ExternalAddrConfirmed { address } => {
-				tracing::trace!("External address confirmed: {address}");
+				tracing::info!("External address confirmed: {address}");
 			},
 			SwarmEvent::ExternalAddrExpired { address } => {
-				tracing::trace!("External address expired: {address}");
+				tracing::info!("External address expired: {address}");
 			},
 			SwarmEvent::NewExternalAddrOfPeer { peer_id, address } => {
-				tracing::trace!("New external address of {peer_id}: {address}");
+				tracing::info!("New external address of {peer_id}: {address}");
 			},
 
 			// -- Identify events
@@ -689,17 +732,20 @@ impl EventLoop {
 					error
 				);
 			},
+			SwarmEvent::Behaviour(BehaviourEvent::Rendezvous(event)) => {
+				tracing::info!("Unhandled Rendezvous event: {:?}", event);
+			},
 
 			// -- mDNS events
 			SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
 				for (peer_id, _multiaddr) in list {
-					tracing::trace!("mDNS discovered a new peer: {peer_id}");
+					tracing::info!("mDNS discovered a new peer: {peer_id}");
 					self.swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
 				}
 			},
 			SwarmEvent::Behaviour(BehaviourEvent::Mdns(mdns::Event::Expired(list))) => {
 				for (peer_id, _multiaddr) in list {
-					tracing::trace!("mDNS discover peer has expired: {peer_id}");
+					tracing::info!("mDNS discover peer has expired: {peer_id}");
 					self.swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
 				}
 			},
@@ -747,14 +793,13 @@ impl EventLoop {
 				let failed_timeout_messages = failed_messages.timeout;
 				tracing::warn!("Slow peer: {peer_id} with failed messages: {failed_publish_messages} publish, {failed_forward_messages} forward, {failed_priority_messages} priority, {failed_non_priority_messages} non-priority, {failed_timeout_messages} timeout");
 			},
-
 			// -- Ping events
 			SwarmEvent::Behaviour(BehaviourEvent::Ping(ping::Event {
 				peer,
 				result: Ok(rtt),
 				..
 			})) => {
-				tracing::trace!(%peer, "Ping is {}ms", rtt.as_millis())
+				tracing::info!(%peer, "Ping is {}ms", rtt.as_millis())
 			},
 
 			// -- Unhandled events
@@ -768,12 +813,14 @@ impl EventLoop {
 	async fn handle_command(&mut self, command: Command) {
 		match command {
 			Command::StartListening { addr, sender } => {
+				tracing::info!("Listening on {addr}");
 				let _ = match self.swarm.listen_on(addr) {
 					Ok(_) => sender.send(Ok(())),
 					Err(e) => sender.send(Err(Box::new(e))),
 				};
 			},
 			Command::Dial { peer_id, peer_addr, sender } => {
+				tracing::info!("Dialing {peer_id} at {peer_addr}");
 				if let hash_map::Entry::Vacant(e) = self.pending_dial.entry(peer_id) {
 					self.swarm.behaviour_mut().kademlia.add_address(&peer_id, peer_addr.clone());
 					match self.swarm.dial(peer_addr.with(Protocol::P2p(peer_id))) {
@@ -796,6 +843,7 @@ impl EventLoop {
 					.start_providing(agent_name.into_bytes().into())
 				{
 					Ok(query_id) => {
+						tracing::info!("Started providing");
 						self.pending_start_providing.insert(query_id, sender);
 					},
 					Err(e) => {
@@ -804,6 +852,7 @@ impl EventLoop {
 				}
 			},
 			Command::GetProviders { agent_name, sender } => {
+				tracing::info!("Getting providers");
 				let query_id = self
 					.swarm
 					.behaviour_mut()
@@ -812,6 +861,7 @@ impl EventLoop {
 				self.pending_get_providers.insert(query_id, sender);
 			},
 			Command::RequestAgent { agent_name, message, peer, sender } => {
+				tracing::info!("Requesting agent {agent_name} from {peer}");
 				let request_id = self
 					.swarm
 					.behaviour_mut()
@@ -819,12 +869,14 @@ impl EventLoop {
 					.send_request(&peer, LLMRequest(agent_name, message));
 				self.pending_request.insert(request_id, sender);
 			},
-			Command::RespondLLM { llm_output: file, channel } => {
+			Command::RespondLLM { llm_output: output, channel } => {
+				let output_to_string = String::from_utf8_lossy(&output);
+				tracing::info!("Responding with: {output_to_string}");
 				match self
 					.swarm
 					.behaviour_mut()
 					.request_response
-					.send_response(channel, LLMResponse(file))
+					.send_response(channel, LLMResponse(output))
 				{
 					Ok(()) => {},
 					Err(e) => {

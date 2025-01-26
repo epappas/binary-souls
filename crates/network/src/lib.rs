@@ -114,6 +114,7 @@ pub async fn new(
 	swarm.behaviour_mut().gossipsub.subscribe(&peer_id_topic).unwrap();
 
 	for topic in additional_topics {
+		tracing::info!("Subscribed to topic: {topic}");
 		swarm
 			.behaviour_mut()
 			.gossipsub
