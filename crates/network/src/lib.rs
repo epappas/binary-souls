@@ -64,7 +64,11 @@ pub async fn new(
 			),
 			rendezvous: rendezvous::client::Behaviour::new(key.clone()),
 			relay: relay::Behaviour::new(key.public().to_peer_id(), Default::default()),
-			ping: ping::Behaviour::new(ping::Config::new()),
+			ping: ping::Behaviour::new(
+				ping::Config::new()
+					.with_interval(Duration::from_secs(5))
+					.with_timeout(Duration::from_secs(5)),
+			),
 			upnp: upnp::tokio::Behaviour::default(),
 			auto_nat: autonat::Behaviour::new(
 				key.public().to_peer_id(),
@@ -75,11 +79,14 @@ pub async fn new(
 			gossipsub: gossipsub::Behaviour::new(
 				gossipsub::MessageAuthenticity::Signed(key.clone()),
 				gossipsub::ConfigBuilder::default()
-					.heartbeat_interval(Duration::from_secs(10)) // This is set to aid debugging by not cluttering the log space
-					.validation_mode(gossipsub::ValidationMode::Strict) // This sets the kind of message validation. The default is Strict (enforce message
+					.heartbeat_interval(Duration::from_secs(10))
+					.validation_mode(gossipsub::ValidationMode::Permissive)
 					.allow_self_origin(true)
 					.history_length(10)
 					.history_gossip(10)
+					.mesh_n_high(8)
+					.mesh_n(6)
+					.mesh_n_low(4)
 					.max_transmit_size(1024 * 1024 * 10)
 					.message_id_fn(|message: &gossipsub::Message| {
 						let mut s = DefaultHasher::new();
@@ -96,14 +103,14 @@ pub async fn new(
 
 	swarm.behaviour_mut().kademlia.set_mode(Some(kad::Mode::Server));
 
-	tracing::trace!("Subscribed to topic: {EVERYONE_TOPIC}");
+	tracing::info!("Subscribed to topic: {EVERYONE_TOPIC}");
 	swarm
 		.behaviour_mut()
 		.gossipsub
 		.subscribe(&gossipsub::IdentTopic::new(EVERYONE_TOPIC))
 		.unwrap();
 
-	tracing::trace!("Subscribed to topic: {peer_id_topic}");
+	tracing::info!("Subscribed to topic: {peer_id_topic}");
 	swarm.behaviour_mut().gossipsub.subscribe(&peer_id_topic).unwrap();
 
 	for topic in additional_topics {

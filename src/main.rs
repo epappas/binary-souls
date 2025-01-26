@@ -44,7 +44,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	let cli = Cli::parse();
 
 	let cancellation_token = CancellationToken::new();
-	let cancellation_token_clone = cancellation_token.clone();
 
 	let (mut network_client, mut network_events, peer_id, network_event_loop) =
 		network::new(cli.secret_key_seed, vec![]).await?;
@@ -53,7 +52,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 	tracing::info!("Node ID: {:?}", peer_id);
 
 	// Spawn the network task for it to run in the background.
-	spawn(network_event_loop.run(cancellation_token_clone));
+	spawn(network_event_loop.run(cancellation_token));
 
 	for addr in cli.listen_address {
 		network_client
