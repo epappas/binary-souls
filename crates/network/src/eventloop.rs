@@ -32,6 +32,7 @@ pub struct EventLoop {
 	swarm: Swarm<Behaviour>,
 	command_receiver: mpsc::Receiver<Command>,
 	event_sender: mpsc::Sender<Event>,
+	agents_providing: Vec<String>,
 	pending_dial: HashMap<PeerId, PendingDialSender>,
 	pending_start_providing: HashMap<kad::QueryId, oneshot::Sender<()>>,
 	pending_get_providers: HashMap<kad::QueryId, oneshot::Sender<HashSet<PeerId>>>,
@@ -58,6 +59,7 @@ impl EventLoop {
 			swarm,
 			command_receiver,
 			event_sender,
+			agents_providing: Default::default(),
 			pending_dial: Default::default(),
 			pending_start_providing: Default::default(),
 			pending_get_providers: Default::default(),
@@ -104,8 +106,13 @@ impl EventLoop {
 		}
 	}
 
+	pub fn bootstrap(&mut self) -> Result<kad::QueryId, kad::NoKnownPeers> {
+		tracing::info!("Bootstrapping");
+		self.swarm.behaviour_mut().kademlia.bootstrap()
+	}
+
 	pub async fn run(mut self, cancellation_token: CancellationToken) {
-		let mut discover_tick = tokio::time::interval(Duration::from_secs(30));
+		let mut discover_tick = tokio::time::interval(Duration::from_secs(60));
 
 		self.add_external_address();
 		self.dial_rendezvous_point_address();
@@ -122,12 +129,14 @@ impl EventLoop {
 					Some(c) => self.handle_command(c).await,
 					None=>  return,
 				},
-				_ = discover_tick.tick(), if self.rendezvous_point.is_some() => self.swarm.behaviour_mut().rendezvous.discover(
+				_ = discover_tick.tick(), if self.rendezvous_point.is_some() => {
+					return self.swarm.behaviour_mut().rendezvous.discover(
 					self.namespace.clone(),
 					self.cookie.clone(),
 					None,
 					self.rendezvous_point.unwrap(),
-					),
+					)
+				},
 			}
 		}
 	}
@@ -799,7 +808,7 @@ impl EventLoop {
 				result: Ok(rtt),
 				..
 			})) => {
-				tracing::info!(%peer, "Ping is {}ms", rtt.as_millis())
+				tracing::trace!(%peer, "Ping is {}ms", rtt.as_millis())
 			},
 
 			// -- Unhandled events
@@ -812,6 +821,18 @@ impl EventLoop {
 
 	async fn handle_command(&mut self, command: Command) {
 		match command {
+			Command::Bootstrap { sender } => {
+				tracing::info!("Bootstrapping");
+				match self.bootstrap() {
+					Ok(_) => {
+						tracing::info!("Successfully bootstrapped");
+						let _ = sender.send(());
+					},
+					Err(e) => {
+						tracing::error!("Failed to bootstrap: {:?}", e);
+					},
+				}
+			},
 			Command::StartListening { addr, sender } => {
 				tracing::info!("Listening on {addr}");
 				let _ = match self.swarm.listen_on(addr) {
@@ -836,6 +857,7 @@ impl EventLoop {
 				}
 			},
 			Command::StartProviding { agent_name, sender } => {
+				let agent_name_to_push = agent_name.clone();
 				match self
 					.swarm
 					.behaviour_mut()
@@ -845,6 +867,7 @@ impl EventLoop {
 					Ok(query_id) => {
 						tracing::info!("Started providing");
 						self.pending_start_providing.insert(query_id, sender);
+						self.agents_providing.push(agent_name_to_push);
 					},
 					Err(e) => {
 						tracing::error!("Failed to start providing: {:?}", e);

@@ -27,6 +27,9 @@ pub struct Behaviour {
 
 #[derive(Debug)]
 pub enum Command {
+	Bootstrap {
+		sender: oneshot::Sender<()>,
+	},
 	StartListening {
 		addr: Multiaddr,
 		sender: oneshot::Sender<Result<(), Box<dyn Error + Send>>>,

@@ -40,6 +40,17 @@ impl Client {
 		receiver.await.expect("Sender not to be dropped.")
 	}
 
+	/// Bootstrap the network.
+	pub async fn bootstrap(&mut self) {
+		tracing::info!("Starting to bootstrap");
+		let (sender, receiver) = oneshot::channel();
+		self.sender
+			.send(Command::Bootstrap { sender })
+			.await
+			.expect("Command receiver not to be dropped.");
+		receiver.await.expect("Sender not to be dropped.");
+	}
+
 	/// Advertise the local node as the provider of the given agent on the DHT.
 	pub async fn start_providing(&mut self, agent_name: String) {
 		tracing::info!("Starting to provide: {:?}", agent_name);

@@ -93,6 +93,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 			}
 		},
 		Commands::Provide { name } => {
+			network_client.bootstrap().await;
 			network_client.start_providing(name.clone()).await;
 
 			loop {
@@ -109,7 +110,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 							network_client.respond_llm(output.as_bytes().to_vec(), channel).await;
 						}
 					},
-					e => todo!("{:?}", e),
+					e => {
+						tracing::info!("Unhandled event: {:?}", e);
+					},
 				}
 			}
 		},
