@@ -11,7 +11,9 @@ use std::{
 
 use futures::{channel::mpsc, prelude::*};
 use libp2p::{
-	autonat, gossipsub, identify, identity, kad, mdns, noise, ping, relay, rendezvous,
+	autonat, gossipsub, identify, identity, kad,
+	kad::Config as KademliaConfig,
+	mdns, noise, ping, relay, rendezvous,
 	request_response::{self, ProtocolSupport},
 	tcp, tls, upnp, yamux, StreamProtocol,
 };
@@ -42,6 +44,9 @@ pub async fn new(
 	let peer_id = id_keys.public().to_peer_id();
 	let peer_id_topic = gossipsub::IdentTopic::new(peer_id.to_base58());
 
+	let mut kademlia_config = KademliaConfig::default();
+	kademlia_config.set_provider_publication_interval(Some(Duration::from_secs(60)));
+
 	let mut swarm = libp2p::SwarmBuilder::with_existing_identity(id_keys)
 		.with_tokio()
 		.with_tcp(tcp::Config::default(), noise::Config::new, yamux::Config::default)?
@@ -54,9 +59,10 @@ pub async fn new(
 				PROTOCOL_VERSION.into(),
 				key.public().clone(),
 			)),
-			kademlia: kad::Behaviour::new(
+			kademlia: kad::Behaviour::with_config(
 				peer_id,
-				kad::store::MemoryStore::new(key.public().to_peer_id()),
+				kad::store::MemoryStore::new(peer_id),
+				kademlia_config,
 			),
 			request_response: request_response::cbor::Behaviour::new(
 				[(StreamProtocol::new(PROTOCOL_VERSION), ProtocolSupport::Full)],
