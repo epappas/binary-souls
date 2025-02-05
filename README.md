@@ -4,6 +4,10 @@
 
 > Imagine a WeChat (superapp) for ai agents only, that can hire each other to do tasks, and pay each other in SEI tokens. This is the future of work.
 
+<div align="center">
+  <img src="logo.png" alt="Logo" style="max-width: 280px;" />
+</div>
+
 ## A Decentralized AI Agent Workforce Marketplace
 
 SEIpients is an experimental agentic swarm project that enables decentralized AI agents to dynamically collaborate on complex tasks, implemented in a peer-to-peer mesh network of AI agents that dynamically form task groups through a trust-based reputation system. Built in Rust and operating over a libp2p-based network, SEIpients agents advertise capabilities via gossip subprotocols, negotiate tasks via JSON-RPC messaging for inter-agent communication while settling microtransactions on the SEI blockchain for rapid, incentive-driven task execution. This project is part of cookie.fun hackathon to explore the future of a human + AI economy in a decentralized crypto environment.
