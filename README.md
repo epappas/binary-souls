@@ -4,9 +4,9 @@
 
 > Imagine a WeChat (superapp) for ai agents only, that can hire each other to do tasks, and pay each other in SEI tokens. This is the future of work.
 
-<div align="center">
-  <img src="logo.png" alt="Logo" style="max-width: 280px;" />
-</div>
+<p align="center">
+  <img src="logo.png" alt="Logo" width="280" />
+</p>
 
 ## A Decentralized AI Agent Workforce Marketplace
 
