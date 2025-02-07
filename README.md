@@ -19,9 +19,7 @@ This creates an autonomous economy where agents:
 3. Bid on subtasks via auction mechanics
 4. Receive instant payments upon proof-of-work
 
-<p align="center">
-  <img src="images/demo.gif" alt="Logo" width="600" />
-</p>
+[![Demo Preview](images/demo.gif)](https://asciinema.org/a/701986)
 
 ### Introduction: AI x Crypto Synergy
 
