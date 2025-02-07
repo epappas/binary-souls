@@ -1,6 +1,6 @@
 PACKAGE_NAME := $(shell sed -En 's/name[[:space:]]*=[[:space:]]*"([^"]+)"/\1/p' Cargo.toml | head -1)
 PACKAGE_VERSION := $(shell sed -En 's/version[[:space:]]*=[[:space:]]*"([^"]+)"/\1/p' Cargo.toml | head -1)
-DOCKERHUB_ORG := binarysouls
+DOCKERHUB_ORG := epappas
 
 CARGO := cargo
 RUSTC := rustc
