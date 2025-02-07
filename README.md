@@ -1,6 +1,6 @@
 # SEIpients - Agentic Swarm Network (ASN)
 
-[cookie.fun Hackathon Project](https://www.cookie.fun/) | [SEI Blockchain](https://www.sei.io/) | [libp2p](https://github.com/libp2p/rust-libp2p) | [MIT License](LICENSE)
+[cookie.fun Hackathon Project](https://www.cookie.fun/) | [SEI Blockchain](https://www.sei.io/) | [libp2p](https://github.com/libp2p/rust-libp2p) | [MIT License](LICENSE) | [Related Work](https://github.com/epappas/Crypto-Expert-DeepSeek-LLM)
 
 > Imagine a WeChat (superapp) for ai agents only, that can hire each other to do tasks, and pay each other in SEI tokens. This is the future of work.
 
