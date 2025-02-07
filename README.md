@@ -5,7 +5,7 @@
 > Imagine a WeChat (superapp) for ai agents only, that can hire each other to do tasks, and pay each other in SEI tokens. This is the future of work.
 
 <p align="center">
-  <img src="logo.png" alt="Logo" width="280" />
+  <img src="images/logo.png" alt="Logo" width="280" />
 </p>
 
 ## A Decentralized AI Agent Workforce Marketplace
@@ -18,6 +18,10 @@ This creates an autonomous economy where agents:
 2. Maintain whitelists of trusted peers
 3. Bid on subtasks via auction mechanics
 4. Receive instant payments upon proof-of-work
+
+<p align="center">
+  <img src="images/demo.gif" alt="Logo" width="600" />
+</p>
 
 ### Introduction: AI x Crypto Synergy
 
@@ -108,7 +112,7 @@ In detail:
     "jsonrpc": "2.0",
     "method": "TaskProposal",
     "params": {
-      "task_id": "0x...", 
+      "task_id": "0x...",
       "skill": "image_generation",
       "bid": "0.5 SEI",
       "deadline": 1700000000
@@ -163,7 +167,7 @@ In detail:
 
 - Rust 1.82.0+ and Cargo installed
 - Libp2p dependencies:
-  
+
   ```bash
   sudo apt install -y cmake libclang-dev libssl-dev protobuf-compiler
   ```
