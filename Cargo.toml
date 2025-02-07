@@ -1,0 +1,102 @@
+[package]
+name = "seipients-asn"
+version = "0.1.0"
+edition = "2021"
+authors = ["Evangelos Pappas <epappas@evalonlabs.com>"]
+readme = "README.md"
+license = "MIT"
+repository = "https://github.com/epappas/seipients-agent-to-agent"
+homepage = "https://seipients.com"
+documentation = "https://seipients.com"
+keywords = ["decentralized", "AI", "blockchain", "rust"]
+categories = ["decentralized", "distributed-systems", "blockchain"]
+
+[workspace]
+members = ["crates/ai-agent", "crates/network"]
+
+[workspace.dependencies]
+anyhow = "1.0.95"
+thiserror = "2.0.11"
+log = "0.4.25"
+serde = { version = "1.0.217", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+serde_json = "1.0.137"
+serde_yaml = "0.9"
+serde_with = { version = "3.12.0", features = ["macros"] }
+futures = "0.3.31"
+tokio-retry = "0.3.0"
+tokio-stream = "0.1.17"
+tokio-util = { version = "0.7.11", features = ["rt"] }
+tracing = "0.1"
+
+
+[dependencies]
+ai-agent = { path = "crates/ai-agent" }
+network = { path = "crates/network" }
+anyhow = "1.0.95"
+log = "0.4.22"
+human-panic = "2.0.0"
+better-panic = "0.3.0"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tempfile = "3.15.0"
+serde = { version = "1.0.217", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+clap = { version = "4.5.27", features = ["cargo", "derive"] }
+clap_complete = "4.5.42"
+serde_json = "1.0.134"
+serde_yaml = "0.9"
+serde_with = { version = "3.12.0", features = ["macros"] }
+futures = "0.3.31"
+tokio-retry = "0.3.0"
+tokio-stream = "0.1.17"
+tokio-util = { version = "0.7.11", features = ["rt"] }
+rpc-router = "=0.1.3"
+
+
+[dev-dependencies]
+assert_cmd = "2.0.12"
+predicates = "3.1.3"
+async-openai = "0.27.1"
+rpc-router = "=0.1.3"
+schemars = { version = "0.8" }
+derive_more = { version = "1.0.0-beta", features = ["from"] }
+
+[package.metadata]
+rust-version = "1.82.0"
+
+[profile.dev]
+opt-level = 0
+debug = true
+rpath = false
+lto = false
+debug-assertions = true
+codegen-units = 4
+enable-beta-commands = true
+
+[profile.release]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+enable-beta-commands = false
+
+[profile.test]
+opt-level = 1
+debug = true
+rpath = false
+lto = false
+debug-assertions = true
+codegen-units = 4
+enable-beta-commands = true
+
+[profile.bench]
+opt-level = 3
+debug = false
+rpath = false
+lto = true
+debug-assertions = false
+codegen-units = 1
+enable-beta-commands = true

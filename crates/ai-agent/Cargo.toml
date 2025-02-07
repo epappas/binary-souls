@@ -1,0 +1,16 @@
+[package]
+name = "ai-agent"
+version = "0.1.0"
+authors = ["Evangelos Pappas <epappas@evalonlabs.com>"]
+description = "AI Agent for Binary Souls"
+edition = "2021"
+
+[dependencies]
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+serde_with = { workspace = true }
+async-openai = "0.27.1"
+rpc-router = "=0.1.3"
+schemars = { version = "0.8" }
+derive_more = { version = "1.0.0-beta", features = ["from"] }
