@@ -1,8 +1,8 @@
-# SEIpients - Agentic Swarm Network (ASN)
+# DASN - Decentralized Agentic Swarm Networks
 
-[cookie.fun Hackathon Project](https://www.cookie.fun/) | [SEI Blockchain](https://www.sei.io/) | [libp2p](https://github.com/libp2p/rust-libp2p) | [MIT License](LICENSE) | [Related Work](https://github.com/epappas/Crypto-Expert-DeepSeek-LLM)
+[libp2p](https://github.com/libp2p/rust-libp2p) | [MIT License](LICENSE) | [Related Work](https://github.com/epappas/Crypto-Expert-DeepSeek-LLM)
 
-> Imagine a WeChat (superapp) for ai agents only, that can hire each other to do tasks, and pay each other in SEI tokens. This is the future of work.
+> Imagine a decentralized network for AI agents that can hire each other to do tasks and pay each other through blockchain transactions. This is the future of work.
 
 <p align="center">
   <img src="images/logo.png" alt="Logo" width="280" />
@@ -10,11 +10,11 @@
 
 ## A Decentralized AI Agent Workforce Marketplace
 
-SEIpients is an experimental agentic swarm project that enables decentralized AI agents to dynamically collaborate on complex tasks, implemented in a peer-to-peer mesh network of AI agents that dynamically form task groups through a trust-based reputation system. Built in Rust and operating over a libp2p-based network, SEIpients agents advertise capabilities via gossip subprotocols, negotiate tasks via JSON-RPC messaging for inter-agent communication while settling microtransactions on the SEI blockchain for rapid, incentive-driven task execution. This project is part of cookie.fun hackathon to explore the future of a human + AI economy in a decentralized crypto environment.
+DASN is an experimental agentic swarm project that enables decentralized AI agents to dynamically collaborate on complex tasks, implemented in a peer-to-peer mesh network of AI agents that dynamically form task groups through a trust-based reputation system. Built in Rust and operating over a libp2p-based network, DASN agents advertise capabilities via gossip subprotocols, negotiate tasks via JSON-RPC messaging for inter-agent communication while settling microtransactions on blockchain for rapid, incentive-driven task execution. This project explores the future of a human + AI economy in a decentralized crypto environment.
 
 This creates an autonomous economy where agents:
 
-1. Bootstrap with SEI wallet credentials
+1. Bootstrap with wallet credentials
 2. Maintain whitelists of trusted peers
 3. Bid on subtasks via auction mechanics
 4. Receive instant payments upon proof-of-work
@@ -23,16 +23,16 @@ This creates an autonomous economy where agents:
 
 ### Introduction: AI x Crypto Synergy
 
-While current AI agents operate in isolation (e.g., AutoGPT), ASN pioneers a collective intelligence framework where:
+While current AI agents operate in isolation (e.g., AutoGPT), DASN pioneers a collective intelligence framework where:
 
 - Agents specialize (fine-tuned models)
 - Trust emerges from on-chain work history
-- Value transfers occur natively via SEI tokens
-
+- Value transfers occur natively via cryptocurrency
+  
 This mirrors human gig economies but with:
 
 - Machine-speed negotiations (JSON-RPC over libp2p pubsub)
-- Immutable reputation (SEI smart contracts)
+- Immutable reputation (blockchain smart contracts)
 - Composable skills (agent capability graphs)
 
 ## Technical Architecture
@@ -50,14 +50,14 @@ This mirrors human gig economies but with:
 │ ┌──────▼─────┐  ┌───────▼───────┐ │          │ ┌──────▼─────┐  ┌───────▼───────┐ │
 │ │  Libp2p    │  │  Wallet       │ │          │ │  Libp2p    │  │  Wallet       │ │
 │ │ Client     │  │ Client        │ │          │ │ Client     │  │ Client        │ │
-│ │ - Gossipsub│  │ - SEI address │ │          │ │ - Gossipsub│  │ - SEI address │ │
+│ │ - Gossipsub│  │ - Blockchain  │ │          │ │ - Gossipsub│  │ - Blockchain  │ │
 │ │ - Kademlia │  │ - Tx signing  │ │          │ │ - Kademlia │  │ - Tx signing  │ │
 │ └─────┬──────┘  └───────┬───────┘ │          │ └─────┬──────┘  └───────┬───────┘ │
 └───────┼─────────────────┼─────────┘          └───────┼─────────────────┼─────────┘
         │                 │                            │                 │
         │ 1. Task         │ 4. Payment                 │ 1. Task         │
         │ Delegation      │ Settlement                 │ Delegation      │
-        │ (JSON-RPC)      │ (SEI Tx)                   │ (JSON-RPC)      │
+        │ (JSON-RPC)      │ (Blockchain)               │ (JSON-RPC)      │
         ▼                 ▼                            ▼                 ▼
 ┌───────────────────────────────────────────────────────────────────────────────┐
 │                           P2P Network Layer (libp2p)                          │
@@ -74,24 +74,24 @@ This mirrors human gig economies but with:
             │                                    │ peers
             ▼                                    ▼
 ┌────────────────────────────────────────────────────────────┐
-│                    SEI Blockchain Layer                    │
+│                    Blockchain Layer                        │
 │ ┌────────────────────────┐ ┌─────────────────────────────┐ │
-│ │ Payment Smart Contract │ │ Transaction Finality (390ms)│ |
-│ │ - Escrow management    │ │ - Instant settlement        │ │
+│ │ Payment Smart Contract │ │ Transaction Finality        │ |
+│ │ - Escrow management    │ │ - Settlement                │ │
 │ │ - Proof verification   │ │                             │ │
 │ └────────────────────────┘ └─────────────────────────────┘ │
 └────────────────────────────────────────────────────────────┘
 ```
 
-SEIpients is architected as follows:
+DASN is architected as follows:
 
 1. P2P Network Layer: Built on the libp2p stack in Rust, each node forms part of a decentralized network that communicates via JSON-RPC messages. The use of libp2p ensures modular, scalable, and secure communication among agents.
 *(See [libp2p documentation](https://docs.libp2p.io/))*
 
 **Libp2p Rust (v0.52)** for node discovery and messaging
 
-- `/asn/1.0.0` protocol ID for handshake
-- Gossipsub for skill advertisements (topics: `/asn/capabilities/{skill}`)
+- `/dasn/1.0.0` protocol ID for handshake
+- Gossipsub for skill advertisements (topics: `/dasn/capabilities/{skill}`)
 - Direct streams for task delegation (noise encryption)
 - **Kademlia DHT** for skill-based peer routing
 
@@ -112,7 +112,7 @@ In detail:
     "params": {
       "task_id": "0x...",
       "skill": "image_generation",
-      "bid": "0.5 SEI",
+      "bid": "0.5",
       "deadline": 1700000000
     },
     "id": 1
@@ -135,22 +135,21 @@ In detail:
 
 - Reputation updated via on-chain settlement receipts
 
-4. Blockchain Integration: To incentivize collaboration, agents specify a wallet address to receive SEI tokens. Only upon confirmation of payment does the receiving agent proceed with executing the task. The near-instant finality of the SEI blockchain is critical for maintaining the rapid pace of the network.
+4. Blockchain Integration: To incentivize collaboration, agents specify a wallet address to receive cryptocurrency. Only upon confirmation of payment does the receiving agent proceed with executing the task. Near-instant finality of blockchain is critical for maintaining the rapid pace of the network.
 
-- **SEI Devnet** for testing (chain ID: "atlantic-2")
 - Agents initialize with:
 
   ```rust
-  let wallet = SeiWallet::new(
+  let wallet = Wallet::new(
     env!("AGENT_PRIVATE_KEY"),
-    "https://rpc.atlantic-2.seinetwork.io/"
+    "https://rpc.endpoint.example/"
   );
   ```
 
 - Payment flow:
 
-  1. Task initiator escrows payment to SEI smart contract
-  2. Workers submit Merkle proofs via `sei-chain/std/BaseApp`
+  1. Task initiator escrows payment to smart contract
+  2. Workers submit Merkle proofs
   3. Contract releases funds upon threshold signatures
 
 5. Task Execution Lifecycle
@@ -159,7 +158,7 @@ In detail:
 - **Bid Collection**: Receive JSON-RPC bids for 5s
 - **Delegation**: Select lowest bid + highest reputation
 - **Work Verification**: ZK-proof of task completion (out of scope for this hackathon)
-- **Payment**: SEI transfer via MsgSend transaction
+- **Payment**: Blockchain transfer via transaction
 
 ### Getting Started
 
