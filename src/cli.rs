@@ -3,10 +3,10 @@ use network::Multiaddr;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "seipients-asn",
+    name = "dasn",
     author = "Evangelos Pappas <epappas@evalonlabs.com>",
-    about = "Agentic p2p network.",
-    long_about = "Agentic p2p network.",
+    about = "Decentralized Agentic Swarm Networks",
+    long_about = "Decentralized Agentic Swarm Networks - A protocol for AI agents to collaborate",
     version = env!("CARGO_PKG_VERSION"),
 )]
 pub struct Cli {
