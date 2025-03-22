@@ -30,7 +30,7 @@ type PendingDialSender = oneshot::Sender<PendingDialResult>;
 type FileRequestResult = Result<Vec<u8>, Box<dyn Error + Send>>;
 type FileRequestSender = oneshot::Sender<FileRequestResult>;
 
-static NAMESPACE: &str = "seipients-asn";
+static NAMESPACE: &str = "dasn";
 
 pub struct EventLoop {
 	swarm: Swarm<AsnBehaviour>,
