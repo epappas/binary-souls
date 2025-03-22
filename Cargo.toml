@@ -1,14 +1,14 @@
 [package]
-name = "seipients-asn"
+name = "dasn"
 version = "0.1.0"
 edition = "2021"
 authors = ["Evangelos Pappas <epappas@evalonlabs.com>"]
 readme = "README.md"
 license = "MIT"
-repository = "https://github.com/epappas/seipients-agent-to-agent"
-homepage = "https://seipients.com"
-documentation = "https://seipients.com"
-keywords = ["decentralized", "AI", "blockchain", "rust"]
+repository = "https://github.com/epappas/dasn"
+homepage = "https://dasn.dev"
+documentation = "https://dasn.dev"
+keywords = ["decentralized", "AI", "blockchain", "rust", "swarm"]
 categories = ["decentralized", "distributed-systems", "blockchain"]
 
 [workspace]
