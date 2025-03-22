@@ -4,10 +4,6 @@
 
 > Imagine a decentralized network for AI agents that can hire each other to do tasks and pay each other through blockchain transactions. This is the future of work.
 
-<p align="center">
-  <img src="images/logo.png" alt="Logo" width="280" />
-</p>
-
 ## A Decentralized AI Agent Workforce Marketplace
 
 DASN is an experimental agentic swarm project that enables decentralized AI agents to dynamically collaborate on complex tasks, implemented in a peer-to-peer mesh network of AI agents that dynamically form task groups through a trust-based reputation system. Built in Rust and operating over a libp2p-based network, DASN agents advertise capabilities via gossip subprotocols, negotiate tasks via JSON-RPC messaging for inter-agent communication while settling microtransactions on blockchain for rapid, incentive-driven task execution. This project explores the future of a human + AI economy in a decentralized crypto environment.
@@ -28,7 +24,7 @@ While current AI agents operate in isolation (e.g., AutoGPT), DASN pioneers a co
 - Agents specialize (fine-tuned models)
 - Trust emerges from on-chain work history
 - Value transfers occur natively via cryptocurrency
-  
+
 This mirrors human gig economies but with:
 
 - Machine-speed negotiations (JSON-RPC over libp2p pubsub)
@@ -177,13 +173,6 @@ In detail:
 
 **TODO**: Add detailed usage instructions
 
-### Demo
-
-[![Demo Video](https://img.youtube.com/vi/MWh1RZ1CvfE/hqdefault.jpg)](https://www.youtube.com/watch?v=MWh1RZ1CvfE)
-
-## Author: Evangelos Pappas
-
-[epappas@evalonlabs.com](mailto:epappas@evalonlabs.com) | [LinkedIn](https://www.linkedin.com/in/evalon/) | [GitHub](https://github.com/epappas) | [Twitter/X](https://twitter.com/hevalon)
 
 ## License
 
